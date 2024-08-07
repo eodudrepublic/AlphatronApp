@@ -1,3 +1,9 @@
+// 프로젝트의 루트 디렉토리에 있는 build.gradle 파일
+plugins {
+    // Google 서비스 Gradle 플러그인을 종속 항목으로 추가
+    id 'com.google.gms.google-services' version '4.4.2' apply false
+}
+
 allprojects {
     repositories {
         google()

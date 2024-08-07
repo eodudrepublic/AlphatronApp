@@ -1,8 +1,10 @@
+// 프로젝트의 app 모듈에 있는 build.gradle 파일
 plugins {
     id "com.android.application"
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
+    id 'com.google.gms.google-services' // Google 서비스 Gradle 플러그인 추가
 }
 
 def localProperties = new Properties()
@@ -55,4 +57,19 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Firebase BoM을 사용하여 호환 가능한 모든 Firebase 라이브러리 버전을 관리
+    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+
+    // Firebase Analytics 추가
+    implementation 'com.google.firebase:firebase-analytics'
+
+    // Firebase Authentication 추가
+    implementation 'com.google.firebase:firebase-auth'
+
+    // 필요에 따라 다른 Firebase SDK 추가
+    // 예를 들어, Firestore 사용 시:
+    // implementation 'com.google.firebase:firebase-firestore'
 }
