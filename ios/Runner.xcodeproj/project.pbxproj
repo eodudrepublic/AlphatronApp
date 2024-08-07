@@ -368,6 +368,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				/* TODO : 여기 PRODUCT_BUNDLE_IDENTIFIER 있으니까 나중에 이걸로 Firebase와 연결 */
 				PRODUCT_BUNDLE_IDENTIFIER = com.t1minyoungdae.alphatronapp.alphatronapp.alphatronApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
