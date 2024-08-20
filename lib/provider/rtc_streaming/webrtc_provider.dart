@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import '../../model/video_streaming/webrtc_model.dart';
+import '../../model/rtc_streaming/webrtc_model.dart';
 
 /// WebRTC 연결을 관리하는 GetX 컨트롤러
 class WebRTCController extends GetxController {
@@ -50,13 +50,15 @@ class WebRTCController extends GetxController {
     if (_model.value.peerConnection == null) return;
 
     // SDP Offer를 SessionDescription 객체로 변환
-    RTCSessionDescription description = RTCSessionDescription(sdpOffer, 'offer');
+    RTCSessionDescription description =
+        RTCSessionDescription(sdpOffer, 'offer');
 
     // 원격 설명 설정
     await _model.value.peerConnection!.setRemoteDescription(description);
 
     // SDP Answer 생성
-    RTCSessionDescription answer = await _model.value.peerConnection!.createAnswer();
+    RTCSessionDescription answer =
+        await _model.value.peerConnection!.createAnswer();
 
     // 로컬 설명 설정
     await _model.value.peerConnection!.setLocalDescription(answer);

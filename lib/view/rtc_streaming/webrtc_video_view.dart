@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:get/get.dart';
-import '../../provider/video_streaming/webrtc_provider.dart';
+import '../../provider/rtc_streaming/webrtc_provider.dart';
 
 class WebRTCVideoView extends StatefulWidget {
   @override
@@ -28,7 +28,8 @@ class _WebRTCVideoViewState extends State<WebRTCVideoView> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (!_controller.model.isConnected || _controller.model.remoteStream == null) {
+      if (!_controller.model.isConnected ||
+          _controller.model.remoteStream == null) {
         return Center(child: CircularProgressIndicator());
       }
       _renderer.srcObject = _controller.model.remoteStream;
