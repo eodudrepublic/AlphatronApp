@@ -16,6 +16,9 @@ class VideoStreamController extends GetxController {
   // WebSocket 연결 상태를 외부에서 접근할 수 있도록 getter로 제공
   RxBool get isConnected => _model.isConnected;
 
+  // 새로 추가된 getter : 데이터 스트림을 텍스트로 확인해볼 수 있도
+  Stream<List<int>> get dataStream => _model.streamController.stream;
+
   // Controller 초기화 시 호출되는 메서드로, VLC Player Controller의 초기화를 수행합니다.
   @override
   void onInit() {
@@ -47,6 +50,8 @@ class VideoStreamController extends GetxController {
   // WebSocket에서 수신한 데이터를 파일에 저장하고, VLC Player에서 재생을 시작합니다.
   void _startStreamingToFile() {
     // 스트림에서 데이터를 수신하여 처리합니다.
+    // TODO : 현재 받아오는 데이터가 없으면 오류 발생 -> 받아오는 데이터가 없을때,
+    // TODO : 즉 침입자가 이미 나가서 영상만 저장되어 있는 상황의 분기로 넘어갈 것
     _model.streamController.stream.listen((data) async {
       await tempFile!
           .writeAsBytes(data, mode: FileMode.append); // 데이터를 파일에 추가로 씁니다.

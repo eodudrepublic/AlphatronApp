@@ -14,6 +14,7 @@ class VideoStreamModel {
   // 서버에 WebSocket을 통해 연결을 시도하는 비동기 함수입니다.
   Future<void> connectToServer() async {
     try {
+      // TODO : 웹소캣 서버 url 수정
       // WebSocket 서버에 연결합니다. Uri.parse()를 사용하여 WebSocket 서버의 주소를 지정합니다.
       channel = WebSocketChannel.connect(Uri.parse('ws://localhost:7777/test'));
       isConnected.value = true; // 연결에 성공하면 isConnected의 값을 true로 설정합니다.
