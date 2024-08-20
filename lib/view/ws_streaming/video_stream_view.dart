@@ -34,7 +34,12 @@ class VideoStreamView extends GetView<VideoStreamController> {
                   onPressed: () {
                     if (controller.model.status.value != 'Connected') {
                       controller.connectToStream(
-                          'ws://your-backend-url/video-stream');
+                        host: 'your-backend-host.com',
+                        port: 8080,
+                        path: '/video-stream',
+                        queryParams: {'userId': 'user123', 'channel': 'main'},
+                        secure: true, // HTTPS 사용 시
+                      );
                     } else {
                       controller.disconnect();
                     }

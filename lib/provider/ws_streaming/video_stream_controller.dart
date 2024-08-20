@@ -7,11 +7,27 @@ class VideoStreamController extends GetxController {
   WebSocketChannel? _channel;
   List<int> _buffer = [];
 
-  void connectToStream(String url) {
+  void connectToStream({
+    required String host,
+    required int port,
+    required String path,
+    Map<String, dynamic>? queryParams,
+    bool secure = false,
+  }) {
+    final scheme = secure ? 'wss' : 'ws';
+    var uri = Uri(
+      scheme: scheme,
+      host: host,
+      port: port,
+      path: path,
+      queryParameters: queryParams,
+    );
+
+    final url = uri.toString();
     model.updateUrl(url);
     model.updateStatus('Connecting');
 
-    _channel = WebSocketChannel.connect(Uri.parse(url));
+    _channel = WebSocketChannel.connect(uri);
     _channel!.stream.listen(
       (dynamic data) {
         if (data is! List<int>) {
