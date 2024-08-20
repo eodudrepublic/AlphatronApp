@@ -1,160 +1,76 @@
-import 'package:get/get.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import '../../model/ws_streaming/video_stream_model.dart';
 import 'dart:io';
+import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
+import '../../model/ws_streaming/video_stream_model.dart';
 
+// VideoStreamController 클래스는 비디오 스트리밍의 제어를 담당합니다.
+// WebSocket을 통해 서버와 연결하고, 수신된 비디오 데이터를 파일에 저장한 후, VLC Player를 사용하여 재생합니다.
 class VideoStreamController extends GetxController {
-  // 비디오 스트림 모델 인스턴스를 생성
-  final VideoStreamModel model = VideoStreamModel();
+  final VideoStreamModel _model =
+      VideoStreamModel(); // 비디오 스트리밍 모델 인스턴스를 생성합니다.
+  late VlcPlayerController vlcController; // VLC Player 컨트롤러를 선언합니다.
+  RxBool isPlaying = false.obs; // 비디오 재생 상태를 추적하는 RxBool 변수입니다.
+  File? tempFile; // 스트리밍 데이터를 임시로 저장할 파일입니다.
 
-  // 웹소켓 채널을 위한 변수
-  WebSocketChannel? _channel;
+  // WebSocket 연결 상태를 외부에서 접근할 수 있도록 getter로 제공
+  RxBool get isConnected => _model.isConnected;
 
-  // 수신된 데이터를 저장할 버퍼 리스트
-  List<int> _buffer = [];
-
-  // VLC Player 컨트롤러 추가
-  VlcPlayerController? _vlcController;
-
-  // 임시 파일 경로
-  String? _tempFilePath;
-
-  // VLC Player 컨트롤러 getter
-  VlcPlayerController? get vlcController => _vlcController;
-
-  // 로컬 IP 주소를 가져오는 메서드
-  Future<String?> getLocalIpAddress() async {
-    try {
-      // 네트워크 인터페이스 목록을 가져와 루프백 주소를 제외하고 IPv4 주소를 반환
-      final interfaces = await NetworkInterface.list(
-        includeLoopback: false, // 루프백 주소 제외
-        type: InternetAddressType.IPv4, // IPv4 주소만 포함
-      );
-      // 사용 가능한 네트워크 인터페이스가 있다면 첫 번째 주소 반환
-      if (interfaces.isNotEmpty) {
-        return interfaces.first.addresses.first.address;
-      }
-    } catch (e) {
-      print('Error getting local IP address: $e'); // 예외 발생 시 에러 메시지 출력
-    }
-    return null; // 예외 발생 시 null 반환
+  // Controller 초기화 시 호출되는 메서드로, VLC Player Controller의 초기화를 수행합니다.
+  @override
+  void onInit() {
+    super.onInit();
+    _initVlcController(); // VLC Player Controller 초기화 함수 호출
   }
 
-  // 스트림을 생성하고 웹소켓 서버에 연결하는 메서드
-  Future<void> createAndConnectToStream({int port = 8080}) async {
-    // 로컬 IP 주소를 가져옴
-    final ipAddress = await getLocalIpAddress();
-    if (ipAddress == null) {
-      model.updateStatus(
-          'Error: Unable to get local IP address'); // IP 주소를 가져오지 못한 경우
-      return;
-    }
+  // VLC Player Controller를 초기화하고, 스트리밍 데이터를 저장할 임시 파일을 생성합니다.
+  Future<void> _initVlcController() async {
+    final directory = await getTemporaryDirectory(); // 임시 디렉토리를 가져옵니다.
+    tempFile = File('${directory.path}/temp_video.ts'); // 임시 파일을 생성합니다.
 
-    // 웹소켓 URI 생성
-    final uri = Uri(
-      scheme: 'ws', // 웹소켓 프로토콜 사용
-      host: ipAddress, // 로컬 IP 주소
-      port: port, // 포트 번호
-      path: '/test', // 경로
-    );
-
-    final url = uri.toString();
-    model.updateUrl(url); // 모델에 URL 업데이트
-    model.updateStatus('Connecting'); // 상태를 'Connecting'으로 업데이트
-
-    try {
-      // 웹소켓 서버에 연결
-      _channel = WebSocketChannel.connect(uri);
-
-      // 수신된 데이터를 처리하기 위한 리스너 설정
-      _channel!.stream.listen(
-        (dynamic data) {
-          if (data is! List<int>) {
-            print('Received non-binary data: $data'); // 바이너리 데이터가 아닌 경우 처리
-            return;
-          }
-          // 수신된 데이터를 버퍼에 추가
-          _buffer.addAll(data);
-          // 버퍼 처리 메서드 호출
-          _processBuffer();
-        },
-        onDone: () {
-          model.updateStatus('Disconnected'); // 연결이 종료된 경우 상태 업데이트
-        },
-        onError: (error) {
-          print('WebSocket Error: $error'); // 에러 발생 시 로그 출력
-          model.updateStatus('Error'); // 상태를 'Error'로 업데이트
-        },
-      );
-
-      model.updateStatus('Connected'); // 성공적으로 연결된 경우 상태를 'Connected'로 업데이트
-
-      // VLC Player 초기화
-      await _initializeVlcPlayer();
-    } catch (e) {
-      model.updateStatus(
-          'Error: ${e.toString()}'); // 예외 발생 시 에러 메시지 출력 및 상태 업데이트
-    }
-  }
-
-  // VLC Player 초기화 메서드
-  Future<void> _initializeVlcPlayer() async {
-    // 임시 파일 생성
-    final tempDir = await Directory.systemTemp.createTemp('h264_stream');
-    _tempFilePath = '${tempDir.path}/stream.h264';
-
-    // VLC Player 컨트롤러 초기화
-    _vlcController = VlcPlayerController.file(
-      File(_tempFilePath!),
-      autoPlay: true,
-      options: VlcPlayerOptions(),
+    // VlcPlayerController를 파일과 연동하여 초기화합니다.
+    vlcController = VlcPlayerController.file(
+      tempFile!, // 재생할 파일을 지정합니다.
+      hwAcc: HwAcc.full, // 하드웨어 가속을 풀로 설정합니다.
+      options: VlcPlayerOptions(), // 추가 옵션을 설정할 수 있습니다.
     );
   }
 
-  // 버퍼에서 데이터를 처리하는 메서드
-  void _processBuffer() async {
-    if (_buffer.isEmpty || _tempFilePath == null) return;
+  // WebSocket 서버에 연결을 시도하고, 연결되면 스트리밍을 시작합니다.
+  Future<void> connectToServer() async {
+    await _model.connectToServer(); // WebSocket 서버에 연결을 시도합니다.
+    if (isConnected.value) {
+      _startStreamingToFile(); // 연결에 성공하면 스트리밍을 시작합니다.
+    }
+  }
 
-    try {
-      // 버퍼의 데이터를 임시 파일에 쓰기
-      final file = File(_tempFilePath!);
-      await file.writeAsBytes(_buffer, mode: FileMode.append);
-
-      // 버퍼 비우기
-      _buffer.clear();
-
-      // VLC Player에 새 미디어 로드
-      if (_vlcController != null) {
-        await _vlcController!.setMediaFromFile(file);
-        if (_vlcController!.value.isPlaying == false) {
-          await _vlcController!.play();
-        }
+  // WebSocket에서 수신한 데이터를 파일에 저장하고, VLC Player에서 재생을 시작합니다.
+  void _startStreamingToFile() {
+    // 스트림에서 데이터를 수신하여 처리합니다.
+    _model.streamController.stream.listen((data) async {
+      await tempFile!
+          .writeAsBytes(data, mode: FileMode.append); // 데이터를 파일에 추가로 씁니다.
+      if (!isPlaying.value) {
+        // 만약 비디오가 재생 중이 아니라면
+        await vlcController.play(); // VLC Player에서 비디오 재생을 시작합니다.
+        isPlaying.value = true; // 비디오 재생 상태를 true로 설정합니다.
       }
-    } catch (e) {
-      print('Error processing buffer: $e');
-    }
-
-    update(); // UI 업데이트 (GetX의 상태 관리 기능)
+    });
   }
 
-  // 웹소켓 연결을 종료하는 메서드
-  void disconnect() {
-    _channel?.sink.close(); // 웹소켓 채널 닫기
-    model.updateStatus('Disconnected'); // 상태를 'Disconnected'로 업데이트
-    _vlcController?.dispose();
-    _vlcController = null;
-    // 임시 파일 삭제
-    if (_tempFilePath != null) {
-      File(_tempFilePath!).deleteSync();
-      _tempFilePath = null;
-    }
+  // WebSocket 서버와의 연결을 해제하고, VLC Player를 정지시키며, 임시 파일을 삭제합니다.
+  void disconnectFromServer() {
+    _model.disconnectFromServer(); // WebSocket 서버와의 연결을 해제합니다.
+    vlcController.stop(); // VLC Player에서 재생을 중지합니다.
+    isPlaying.value = false; // 비디오 재생 상태를 false로 설정합니다.
+    tempFile?.delete(); // 임시 파일을 삭제합니다.
   }
 
-  // 컨트롤러가 삭제될 때 호출되는 메서드 (리소스 정리)
+  // Controller가 종료될 때 호출되는 메서드로, 리소스를 정리합니다.
   @override
   void onClose() {
-    disconnect(); // 웹소켓 채널 닫기
-    super.onClose();
+    vlcController.dispose(); // VLC Player Controller를 해제합니다.
+    tempFile?.delete(); // 임시 파일을 삭제합니다.
+    super.onClose(); // 상위 클래스의 onClose 메서드를 호출하여 정리 작업을 수행합니다.
   }
 }

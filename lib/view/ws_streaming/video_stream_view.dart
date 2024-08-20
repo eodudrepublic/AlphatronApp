@@ -3,71 +3,55 @@ import 'package:get/get.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import '../../provider/ws_streaming/video_stream_controller.dart';
 
-class VideoStreamView extends GetView<VideoStreamController> {
-  // VideoStreamController 인스턴스를 뷰에 주입
-  final VideoStreamController controller = Get.put(VideoStreamController());
+// VideoStreamView 클래스는 비디오 스트리밍을 위한 UI를 정의합니다.
+// 서버와의 연결, 비디오 플레이어, 연결 해제 버튼 등을 포함한 Flutter 위젯을 구성합니다.
+class VideoStreamView extends StatelessWidget {
+  const VideoStreamView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Get.put()을 사용하여 VideoStreamController를 인스턴스화하고, 이 컨트롤러는 UI와의 상태 관리를 담당합니다.
+    final controller = Get.put(VideoStreamController());
+
     return Scaffold(
-      appBar: AppBar(title: Text('Video Stream')), // 상단 앱바 타이틀 설정
+      appBar: AppBar(title: const Text('Video Stream')),
+      // 상단 앱 바에 'Video Stream'이라는 제목을 표시합니다.
       body: Center(
-        child: Obx(() => Column(
-              mainAxisAlignment: MainAxisAlignment.center, // 세로로 중앙 정렬
+        // Obx는 GetX의 리액티브 위젯으로, Rx 변수의 변화에 따라 UI를 자동으로 업데이트합니다.
+        child: Obx(() {
+          // 서버와 연결되지 않은 경우, 'Connect to Server' 버튼을 표시합니다.
+          if (!controller.isConnected.value) {
+            return ElevatedButton(
+              onPressed: controller.connectToServer, // 버튼을 클릭하면 서버에 연결을 시도합니다.
+              child: const Text('Connect to Server'),
+            );
+          } else {
+            // 서버와 연결된 경우, 비디오 플레이어와 'Disconnect' 버튼을 표시합니다.
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 연결 상태를 텍스트로 표시
-                Text('Status: ${controller.model.status.value}'),
-
-                // URL이 비어있지 않으면 URL 표시
-                if (controller.model.url.isNotEmpty)
-                  Text('URL: ${controller.model.url.value}'),
-                SizedBox(height: 20), // 간격 추가
-
-                // 상태가 'Connected'이면 비디오 스트림을 표시
-                if (controller.model.status.value == 'Connected')
-                  Expanded(
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9, // 화면 비율 설정
-                      child: controller.vlcController != null
-                          ? VlcPlayer(
-                              controller: controller.vlcController!,
-                              aspectRatio: 16 / 9,
-                              placeholder:
-                                  Center(child: CircularProgressIndicator()),
-                            )
-                          : Container(
-                              color: Colors.black, // 비디오 스트림 배경색 설정
-                              child: Center(
-                                child: Text('Initializing video player...',
-                                    style: TextStyle(
-                                        color: Colors.white)), // 초기화 중 메시지
-                              ),
-                            ),
-                    ),
-                  )
-                else
-                  // 연결 상태가 'Connected'가 아니면 비디오가 사용 불가하다는 메시지 표시
-                  Text('Video not available'),
-                SizedBox(height: 20), // 간격 추가
-
-                // 연결/연결 해제 버튼
+                Expanded(
+                  // VlcPlayer 위젯을 사용하여 비디오를 재생합니다.
+                  child: VlcPlayer(
+                    controller: controller.vlcController,
+                    // VLC 플레이어 컨트롤러를 설정합니다.
+                    aspectRatio: 16 / 9,
+                    // 비디오의 가로 세로 비율을 16:9로 설정합니다.
+                    placeholder: const Center(
+                        child:
+                            CircularProgressIndicator()), // 비디오 로딩 중에 로딩 인디케이터를 표시합니다.
+                  ),
+                ),
                 ElevatedButton(
-                  onPressed: () {
-                    if (controller.model.status.value != 'Connected') {
-                      // 연결되지 않았을 경우 연결 시도
-                      controller.createAndConnectToStream(port: 8080);
-                    } else {
-                      // 이미 연결된 경우 연결 해제
-                      controller.disconnect();
-                    }
-                  },
-                  // 버튼 텍스트: 연결 상태에 따라 'Connect' 또는 'Disconnect'
-                  child: Text(controller.model.status.value != 'Connected'
-                      ? 'Connect'
-                      : 'Disconnect'),
+                  onPressed: controller.disconnectFromServer,
+                  // 버튼을 클릭하면 서버와의 연결을 해제합니다.
+                  child: const Text(
+                      'Disconnect'), // 'Disconnect'라는 텍스트를 버튼에 표시합니다.
                 ),
               ],
-            )),
+            );
+          }
+        }),
       ),
     );
   }
