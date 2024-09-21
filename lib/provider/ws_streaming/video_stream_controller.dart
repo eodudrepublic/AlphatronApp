@@ -31,12 +31,22 @@ class VideoStreamController extends GetxController {
     final directory = await getTemporaryDirectory(); // 임시 디렉토리를 가져옵니다.
     tempFile = File('${directory.path}/temp_video.ts'); // 임시 파일을 생성합니다.
 
-    // VlcPlayerController를 파일과 연동하여 초기화합니다.
-    vlcController = VlcPlayerController.file(
-      tempFile!, // 재생할 파일을 지정합니다.
-      hwAcc: HwAcc.full, // 하드웨어 가속을 풀로 설정합니다.
-      options: VlcPlayerOptions(), // 추가 옵션을 설정할 수 있습니다.
-    );
+    // 파일이 생성되기 전까지 VLC Player 초기화를 미루거나, 필요시 재초기화하는 방법 고려
+    if (await tempFile!.length() > 102400) {
+      vlcController = VlcPlayerController.file(
+        tempFile!,
+        hwAcc: HwAcc.full,
+        options: VlcPlayerOptions(),
+      );
+    } else {
+      print('File is empty during initialization, VLC Player not initialized yet.');
+    }
+    // // VlcPlayerController를 파일과 연동하여 초기화합니다.
+    // vlcController = VlcPlayerController.file(
+    //   tempFile!, // 재생할 파일을 지정합니다.
+    //   hwAcc: HwAcc.full, // 하드웨어 가속을 풀로 설정합니다.
+    //   options: VlcPlayerOptions(), // 추가 옵션을 설정할 수 있습니다.
+    // );
   }
 
   // WebSocket 서버에 연결을 시도하고, 연결되면 스트리밍을 시작합니다.
@@ -47,21 +57,56 @@ class VideoStreamController extends GetxController {
     }
   }
 
-  // WebSocket에서 수신한 데이터를 파일에 저장하고, VLC Player에서 재생을 시작합니다.
+  // // WebSocket에서 수신한 데이터를 파일에 저장하고, VLC  재생을 시작합니다.
+  // void _startStreamingToFile() {
+  //   // 스트림에서 데이터를 수신하여 처리합니다.
+  //   // TODO : 현재 받아오는 데이터가 없으면 오류 발생 -> 받아오는 데이터가 없을때,
+  //   // TODO : 즉 침입자가 이미 나가서 영상만 저장되어 있는 상황의 분기로 넘어갈 것
+  //   _model.streamController.stream.listen((data) async {
+  //     await tempFile!
+  //         .writeAsBytes(data, mode: FileMode.append); // 데이터를 파일에 추가로 씁니다.
+  //     if (!isPlaying.value) {
+  //       // 만약 비디오가 재생 중이 아니라면
+  //       await vlcController.play(); // VLC Player에서 비디오 재생을 시작합니다.
+  //       isPlaying.value = true; // 비디오 재생 상태를 true로 설정합니다.
+  //     }
+  //   });
+  // }
   void _startStreamingToFile() {
     // 스트림에서 데이터를 수신하여 처리합니다.
-    // TODO : 현재 받아오는 데이터가 없으면 오류 발생 -> 받아오는 데이터가 없을때,
-    // TODO : 즉 침입자가 이미 나가서 영상만 저장되어 있는 상황의 분기로 넘어갈 것
     _model.streamController.stream.listen((data) async {
-      await tempFile!
-          .writeAsBytes(data, mode: FileMode.append); // 데이터를 파일에 추가로 씁니다.
-      if (!isPlaying.value) {
-        // 만약 비디오가 재생 중이 아니라면
-        await vlcController.play(); // VLC Player에서 비디오 재생을 시작합니다.
-        isPlaying.value = true; // 비디오 재생 상태를 true로 설정합니다.
+      if (data.isNotEmpty) {
+        print('Received data, writing to file...');
+        await tempFile!.writeAsBytes(data, mode: FileMode.append); // 데이터를 파일에 추가로 씁니다.
+
+        if (!isPlaying.value) {
+          // 파일이 일정 크기 이상일 때만 재생 시작
+          if (await tempFile!.length() > 1024) { // 예를 들어, 1KB 이상의 데이터가 쌓인 후
+            print('Starting VLC Player...');
+            await vlcController.play();
+            isPlaying.value = true;
+          } else {
+            print('File is still too small, not starting VLC Player.');
+          }
+        } else {
+          await vlcController.setMediaFromFile(tempFile!);
+        }
+      } else {
+        print('No data received');
       }
+      // await tempFile!.writeAsBytes(data, mode: FileMode.append); // 데이터를 파일에 추가로 씁니다.
+      //
+      // // VLC Player가 이미 재생 중이지 않다면 재생을 시작합니다.
+      // if (!isPlaying.value) {
+      //   await vlcController.play(); // VLC Player에서 비디오 재생을 시작합니다.
+      //   isPlaying.value = true; // 비디오 재생 상태를 true로 설정합니다.
+      // } else {
+      //   // VLC Player가 이미 재생 중이라면, 재생을 갱신하도록 요청할 수 있습니다.
+      //   await vlcController.setMediaFromFile(tempFile!); // 파일을 다시 로드하여 재생을 갱신합니다.
+      // }
     });
   }
+
 
   // WebSocket 서버와의 연결을 해제하고, VLC Player를 정지시키며, 임시 파일을 삭제합니다.
   void disconnectFromServer() {

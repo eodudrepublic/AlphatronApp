@@ -16,7 +16,7 @@ class VideoStreamModel {
     try {
       // TODO : 웹소캣 서버 url 수정
       // WebSocket 서버에 연결합니다. Uri.parse()를 사용하여 WebSocket 서버의 주소를 지정합니다.
-      channel = WebSocketChannel.connect(Uri.parse('ws://localhost:7777/test'));
+      channel = WebSocketChannel.connect(Uri.parse('ws://172.30.1.11:7777/test'));
       isConnected.value = true; // 연결에 성공하면 isConnected의 값을 true로 설정합니다.
 
       // WebSocket 스트림을 구독하여 서버로부터 데이터를 수신합니다.
@@ -25,6 +25,7 @@ class VideoStreamModel {
           // 수신한 데이터가 Uint8List 타입인지 확인합니다.
           if (data is Uint8List) {
             streamController.add(data); // 데이터를 StreamController를 통해 스트림에 추가합니다.
+            print("data 추가잘됨!");
           }
         },
         onError: (error) {
