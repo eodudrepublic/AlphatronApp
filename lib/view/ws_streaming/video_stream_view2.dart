@@ -3,14 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/io.dart';
 
-class VideoStream extends StatefulWidget {
-  const VideoStream({Key? key}) : super(key: key);
+class VideoStreamView2 extends StatefulWidget {
+  const VideoStreamView2({Key? key}) : super(key: key);
 
   @override
-  State<VideoStream> createState() => _VideoStreamState();
+  State<VideoStreamView2> createState() => _VideoStreamState();
 }
 
-class _VideoStreamState extends State<VideoStream> {
+class _VideoStreamState extends State<VideoStreamView2> {
   final IOWebSocketChannel _channel = IOWebSocketChannel.connect("ws://localhost:7777/test");
   bool _isConnected = false;
   Uint8List? _currentFrame;
