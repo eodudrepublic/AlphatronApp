@@ -25,7 +25,7 @@ class _VideoStreamingScreenState extends State<VideoStreamingScreen> {
   }
 
   void connectWebSocket() {
-    channel = WebSocketChannel.connect(Uri.parse('ws://192.168.0.16:7777/test'));
+    channel = WebSocketChannel.connect(Uri.parse('ws://192.168.0.23:7777/test'));
     channel?.stream.listen((message) {
       // 메시지가 Uint8List 타입인지 확인
       if (message is Uint8List) {

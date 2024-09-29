@@ -25,14 +25,14 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/root',
       getPages: [
-        GetPage(name: '/root', page: () => VideoStreamingScreen()),
+        GetPage(name: '/root', page: () => VideoStream()),
         GetPage(name: '/google_sign_in_view', page: () => SignInPage()),
         GetPage(name: '/user_info_page', page: () => UserInfoPage()),
         GetPage(
             name: '/websocket_video_streaming', page: () => WebRTCVideoView()),
         GetPage(name: '/webrtc_video_streaming', page: () => WebRTCVideoView()),
       ],
-      home: VideoStreamingScreen(),
+      home: VideoStream(),
     );
   }
 }
