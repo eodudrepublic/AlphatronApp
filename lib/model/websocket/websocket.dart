@@ -39,7 +39,7 @@ class WebSocket {
   /// Disconnects the current application from a websocket
   void disconnect() {
     if (_channel != null) {
-      _channel!.sink.close(status.goingAway);
+      _channel!.sink.close(status.normalClosure);
     }
   }
 }
